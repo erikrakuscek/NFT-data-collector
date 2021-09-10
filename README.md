@@ -1,5 +1,13 @@
 # bsc-nft-scraper
 
+## SOLANA
+
+```bash
+npm install
+npm install -g ts-node
+ts-node .\scraperSol.ts
+```
+
 ## Installation
 
 ```bash
