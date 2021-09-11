@@ -326,7 +326,7 @@ export const METADATA_SCHEMA = new Map<any, any>([
       fields: [
         ['instruction', 'u8'],
         ['data', { kind: 'option', type: Data }],
-        ['updateAuthority', { kind: 'option', type: 'pubkeyAsString' }],
+        ['updateAuthority', { kind: 'option', type: 'u256' }],
         ['primarySaleHappened', { kind: 'option', type: 'u8' }],
       ],
     },
@@ -360,8 +360,8 @@ export const METADATA_SCHEMA = new Map<any, any>([
         ['key', 'u8'],
         ['supply', 'u64'],
         ['maxSupply', { kind: 'option', type: 'u64' }],
-        ['printingMint', 'pubkeyAsString'],
-        ['oneTimePrintingAuthorizationMint', 'pubkeyAsString'],
+        ['printingMint', 'u256'],
+        ['oneTimePrintingAuthorizationMint', 'u256'],
       ],
     },
   ],
@@ -382,7 +382,7 @@ export const METADATA_SCHEMA = new Map<any, any>([
       kind: 'struct',
       fields: [
         ['key', 'u8'],
-        ['parent', 'pubkeyAsString'],
+        ['parent', 'u256'],
         ['edition', 'u64'],
       ],
     },
@@ -405,7 +405,7 @@ export const METADATA_SCHEMA = new Map<any, any>([
     {
       kind: 'struct',
       fields: [
-        ['address', 'pubkeyAsString'],
+        ['address', 'u256'],
         ['verified', 'u8'],
         ['share', 'u8'],
       ],
@@ -417,8 +417,8 @@ export const METADATA_SCHEMA = new Map<any, any>([
       kind: 'struct',
       fields: [
         ['key', 'u8'],
-        ['updateAuthority', 'pubkeyAsString'],
-        ['mint', 'pubkeyAsString'],
+        ['updateAuthority', 'u256'],
+        ['mint', 'u256'],
         ['data', Data],
         ['primarySaleHappened', 'u8'], // bool
         ['isMutable', 'u8'], // bool
