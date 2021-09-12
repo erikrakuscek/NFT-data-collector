@@ -13,6 +13,8 @@ import {
 } from './ids';
 import BN from 'bn.js';
 
+// get the decodeMetadata function from metaplex - https://github.com/metaplex-foundation/metaplex/blob/master/js/packages/common/src/actions/metadata.ts#L438
+
 const METADATA_REPLACE = new RegExp('\u0000', 'g');
 export const METADATA_PREFIX = 'metadata';
 export const EDITION = 'edition';

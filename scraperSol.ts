@@ -1,6 +1,7 @@
 import * as web3 from "@solana/web3.js";
 import * as metadata from "./metadata";
 import { PublicKey } from "@solana/web3.js";
+import { createDatabase } from "./database";
 
 const TOKEN_METADATA_PROGRAM_ID = new web3.PublicKey(
   "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
@@ -36,8 +37,8 @@ async function getMetadataAccount(
   const accInfo = await connection.getAccountInfo(m);
   console.log(accInfo);
 
-  // finally, decode metadata
-  // get the decodeMetadata function from metaplex - https://github.com/metaplex-foundation/metaplex/blob/master/js/packages/common/src/actions/metadata.ts#L438
   console.log(metadata.decodeMetadata(accInfo!.data));
 })();
 
+// To generate SQLite database
+// createDatabase();
