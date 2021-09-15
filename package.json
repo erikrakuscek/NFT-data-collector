@@ -1,9 +1,14 @@
 {
+    "name": "solanascraper",
+    "version": "1.0.0",
+    "scripts": {
+        "start": "ts-node ./transactionLogger.ts "
+    },
     "dependencies": {
         "@solana/web3.js": "^1.24.2",
+        "bn.js": "^5.1.3",
         "borsh": "^0.6.0",
         "sqlite3": "^5.0.2",
-        "bn.js": "^5.1.3",
         "ts-node": "^10.2.1",
         "typescript": "^4.4.2"
     },
