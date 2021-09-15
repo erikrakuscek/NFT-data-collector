@@ -1,5 +1,5 @@
 import * as web3 from "@solana/web3.js";
-import * as https from 'https'
+import { https } from 'follow-redirects';
 
 /*(async () => {
     // Connect to cluster
@@ -19,9 +19,7 @@ import * as https from 'https'
     })
 })();*/
 
-// TODO: url rediects after called, that's why this url doesn't return a JSON
 let url = "https://www.arweave.net/oY0PYiE2GUEBL1jR7LUvgEVEvV6yhSet7NePYTQ-JNs";
-
 https.get(url,(res) => {
     let body = "";
 
