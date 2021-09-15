@@ -1,4 +1,5 @@
 import { deserializeUnchecked } from 'borsh';
+import * as web3 from "@solana/web3.js";
 import { PublicKey } from '@solana/web3.js';
 import {
   METADATA_PROGRAM_ID,
@@ -12,9 +13,13 @@ import {
   AUCTION_ID
 } from './ids';
 import BN from 'bn.js';
+import { https } from 'follow-redirects';
 
 // get the decodeMetadata function from metaplex - https://github.com/metaplex-foundation/metaplex/blob/master/js/packages/common/src/actions/metadata.ts#L438
 
+const TOKEN_METADATA_PROGRAM_ID = new web3.PublicKey(
+  "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+);
 const METADATA_REPLACE = new RegExp('\u0000', 'g');
 export const METADATA_PREFIX = 'metadata';
 export const EDITION = 'edition';
@@ -440,7 +445,7 @@ export const METADATA_SCHEMA = new Map<any, any>([
 ]);
 
 
-export const decodeMetadata = (buffer: Buffer): Metadata => {
+function decodeMetadata(buffer: Buffer): Metadata {
   const metadata = deserializeUnchecked(
     METADATA_SCHEMA,
     Metadata,
@@ -451,4 +456,53 @@ export const decodeMetadata = (buffer: Buffer): Metadata => {
   metadata.data.uri = metadata.data.uri.replace(METADATA_REPLACE, '');
   metadata.data.symbol = metadata.data.symbol.replace(METADATA_REPLACE, '');
   return metadata;
+}
+
+async function getMetadataAccount(
+  tokenMint: PublicKey
+): Promise<web3.PublicKey> {
+  const [addr, nr] = await PublicKey.findProgramAddress(
+    [
+      Buffer.from("metadata"),
+      TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+      tokenMint.toBuffer(),
+    ],
+    TOKEN_METADATA_PROGRAM_ID
+  );
+
+  return addr;
+}
+
+export const getMetadata = async (tokenId: string): Promise<Metadata> => {
+  // Connect to cluster
+  const connection = new web3.Connection(
+    web3.clusterApiUrl("mainnet-beta"),
+    "confirmed"
+  );
+
+  const m = await getMetadataAccount(new web3.PublicKey(tokenId));
+  const accInfo = await connection.getAccountInfo(m);
+
+  return decodeMetadata(accInfo!.data);  
+};
+
+export const getMetadataFromUri = async (uri: string) => {
+  return https.get(uri, res => {
+    let body = "";
+  
+    res.on("data", (chunk) => {
+        body += chunk;
+    });
+  
+    res.on("end", () => {
+        try {
+          return JSON.parse(body);
+        } catch (error) {
+          return error;
+        };
+    });
+  
+  }).on("error", (error) => {
+    return error;
+  });
 };
