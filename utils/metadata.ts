@@ -14,6 +14,7 @@ import {
 } from './ids';
 import BN from 'bn.js';
 import { https } from 'follow-redirects';
+import request from 'request';
 
 // get the decodeMetadata function from metaplex - https://github.com/metaplex-foundation/metaplex/blob/master/js/packages/common/src/actions/metadata.ts#L438
 
@@ -486,23 +487,23 @@ export const getMetadata = async (tokenId: string): Promise<Metadata> => {
   return decodeMetadata(accInfo!.data);  
 };
 
-export const getMetadataFromUri = async (uri: string) => {
-  return https.get(uri, res => {
-    let body = "";
-  
-    res.on("data", (chunk) => {
-        body += chunk;
+
+export const getMetadataFromUrl = async (uri: string) => {
+  return request.get(uri, function (err, res, body) {
+    console.log(res.request.uri.href);
+    var XMLHttpRequest = require('xhr2');
+    var req = new XMLHttpRequest();
+    req.onreadystatechange = function() {
+        if (req.readyState === 4) {       
+            var response = req.responseText;
+            //console.log(response)
+            var json = JSON.parse(response);
+            console.log(json)
+        }
+    };
+    
+    req.open('GET', res.request.uri.href);
+    req.send(null);
     });
-  
-    res.on("end", () => {
-        try {
-          return JSON.parse(body);
-        } catch (error) {
-          return error;
-        };
-    });
-  
-  }).on("error", (error) => {
-    return error;
-  });
+
 };

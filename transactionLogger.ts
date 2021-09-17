@@ -1,6 +1,6 @@
 import * as web3 from "@solana/web3.js";
 import { createDatabase } from "./utils/database";
-import { getMetadata, getMetadataFromUri } from "./utils/metadata";
+import { getMetadata, getMetadataFromUrl } from "./utils/metadata";
 
 // Connect to cluster
 var connectionHttp = new web3.Connection(
@@ -35,7 +35,7 @@ var connectionWs = new web3.Connection(
                         console.log(tokenName);
                         console.log(tokenUri);
             
-                        getMetadataFromUri(tokenUri).then(json => {
+                        getMetadataFromUrl(tokenUri).then(json => {
                             console.log(json);
                         });
                     });
