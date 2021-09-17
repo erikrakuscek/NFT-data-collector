@@ -13,8 +13,8 @@ import {
   AUCTION_ID
 } from './ids';
 import BN from 'bn.js';
-import { https } from 'follow-redirects';
-import request from 'request';
+import axios from 'axios';
+const XMLHttpRequest = require('xhr2');
 
 // get the decodeMetadata function from metaplex - https://github.com/metaplex-foundation/metaplex/blob/master/js/packages/common/src/actions/metadata.ts#L438
 
@@ -488,22 +488,7 @@ export const getMetadata = async (tokenId: string): Promise<Metadata> => {
 };
 
 
-export const getMetadataFromUrl = async (uri: string) => {
-  return request.get(uri, function (err, res, body) {
-    console.log(res.request.uri.href);
-    var XMLHttpRequest = require('xhr2');
-    var req = new XMLHttpRequest();
-    req.onreadystatechange = function() {
-        if (req.readyState === 4) {       
-            var response = req.responseText;
-            //console.log(response)
-            var json = JSON.parse(response);
-            console.log(json)
-        }
-    };
-    
-    req.open('GET', res.request.uri.href);
-    req.send(null);
-    });
-
+export const getMetadataFromUrl = async (url: string): Promise<any> => {
+  const redirectUrl = (await axios.get(url)).request.res.responseUrl;
+  return (await axios.get(redirectUrl)).data;
 };

@@ -29,16 +29,14 @@ var connectionWs = new web3.Connection(
                     console.log(price);
                     console.log(tokenId);
             
-                    await getMetadata(tokenId!).then(metadata => {
-                        const tokenName = metadata.data.name;
-                        const tokenUri = metadata.data.uri;
-                        console.log(tokenName);
-                        console.log(tokenUri);
-            
-                        getMetadataFromUrl(tokenUri).then(json => {
-                            console.log(json);
-                        });
-                    });
+                    const metadata = await getMetadata(tokenId!)
+                    const tokenName = metadata.data.name;
+                    const tokenUri = metadata.data.uri;
+                    console.log(tokenName);
+                    console.log(tokenUri);
+        
+                    const metadataJson = await getMetadataFromUrl(tokenUri);
+                    console.log(metadataJson);
                 }
             }).catch(e => console.log(e));            
         }
