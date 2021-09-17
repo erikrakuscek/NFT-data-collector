@@ -452,7 +452,6 @@ function decodeMetadata(buffer: Buffer): Metadata {
     Metadata,
     buffer, 
   ) as Metadata;
-  console.log(metadata)
   metadata.data.name = metadata.data.name.replace(METADATA_REPLACE, '');
   metadata.data.uri = metadata.data.uri.replace(METADATA_REPLACE, '');
   metadata.data.symbol = metadata.data.symbol.replace(METADATA_REPLACE, '');
