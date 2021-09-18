@@ -1,5 +1,5 @@
 import * as web3 from "@solana/web3.js";
-import { createDatabase } from "./utils/database";
+import { createDatabase, insert } from "./utils/database";
 import { getMetadata, getMetadataFromUrl } from "./utils/metadata";
 
 // Connect to cluster
@@ -11,6 +11,9 @@ var connectionWs = new web3.Connection(
     'ws://api.mainnet-beta.solana.com',
     "confirmed"
 );
+
+// To generate SQLite database
+// createDatabase();
 
 (async () => {
     connectionWs.onLogs('all', async (logs, ctx) => {
@@ -25,7 +28,7 @@ var connectionWs = new web3.Connection(
             const wallet: any = {};
             await connectionHttp.getTransaction(logs.signature).then(async info => {
                 if (info && info.meta) {
-                    token.token_id = info.meta.postTokenBalances ? info.meta.postTokenBalances[0].mint : null;
+                    token.address = info.meta.postTokenBalances ? info.meta.postTokenBalances[0].mint : null;
 
                     const preBalances = info.meta.preBalances;
                     const postBalances = info.meta.postBalances;
@@ -43,22 +46,23 @@ var connectionWs = new web3.Connection(
                         block.blockTime = result?.blockTime;
                     }
 
-                    const metadata = await getMetadata(token.token_id!)
+                    const metadata = await getMetadata(token.address!)
                     token.name = metadata.data.name;
                     token.uri = metadata.data.uri;
                     //token.symbol = metadata.data.symbol;
 
-                    token.asset_metadata = await getMetadataFromUrl(token.uri);
-                    token.image_url = token.asset_metadata.image;
-                    token.traits = token.asset_metadata.attributes;
-                    //token.description = token.asset_metadata.description;
+                    const metadataJson = await getMetadataFromUrl(token.uri);
+                    token.asset_metadata = JSON.stringify(metadataJson);
+                    token.image_url = metadataJson.image;
+                    token.traits = JSON.stringify(metadataJson.attributes);
+                    //token.description = metadataJson.description;
 
-                    collection.name = token.asset_metadata.collection;
-                    if (token.asset_metadata.collection?.name) {
-                        collection.name = token.asset_metadata.collection.name;
+                    collection.name = metadataJson.collection;
+                    if (metadataJson.collection?.name) {
+                        collection.name = metadataJson.collection.name;
                     }
-                    collection.description = token.asset_metadata.collection?.family;
-                    collection.external_url = token.asset_metadata.external_url;
+                    collection.description = metadataJson.collection?.family;
+                    collection.external_url = metadataJson.external_url;
 
                     const idxSeller = subArray.indexOf(Math.max(...subArray));
                     const idxBuyer = subArray.indexOf(Math.min(...subArray));
@@ -66,6 +70,8 @@ var connectionWs = new web3.Connection(
                     wallet.to_wallet_address = info.transaction.message.accountKeys[idxBuyer].toString();
                 }
             }).catch(e => console.log(e));
+            insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.from_wallet_address}');`);
+            insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.to_wallet_address}');`);
             console.log(token);
             console.log(collection);
             console.log(block);
@@ -74,6 +80,3 @@ var connectionWs = new web3.Connection(
         }
     })
 })();
-
-// To generate SQLite database
-// createDatabase();

@@ -1,5 +1,11 @@
 import sqlite3 from "sqlite3"
 
+export function insert(query: string) {
+    var db = new sqlite3.Database('database.db');
+    db.run(query);
+    db.close();
+}
+
 export function createDatabase() {
     var db = new sqlite3.Database('database.db');
 
@@ -29,10 +35,10 @@ export function createDatabase() {
             "timestamp DATETIME" +
             ");");
 
-        db.run("CREATE TABLE Asset (" +
+        db.run("CREATE TABLE Token (" +
             "id INTEGER PRIMARY KEY AUTOINCREMENT," +
             "collection_id INTEGER," +
-            "token_id TEXT," +
+            "address TEXT," +
             "uri TEXT," +
             "asset_metadata TEXT," +
             "image_url TEXT," +
