@@ -14,7 +14,7 @@ import {
 } from './ids';
 import BN from 'bn.js';
 import axios from 'axios';
-const XMLHttpRequest = require('xhr2');
+
 
 // get the decodeMetadata function from metaplex - https://github.com/metaplex-foundation/metaplex/blob/master/js/packages/common/src/actions/metadata.ts#L438
 

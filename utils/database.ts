@@ -56,9 +56,8 @@ export function createDatabase() {
             "transaction_index TEXT," +
             "from_wallet_id TEXT," +
             "to_wallet_id TEXT," +
-            "nonce TEXT," +
-            "gas REAL," +
-            "gas_price REAL," +
+            "recentBlockHash TEXT," +
+            "fee INTEGER," +
             "value REAL," +
             "vol INTEGER," +
             "FOREIGN KEY(block_number) REFERENCES Block(id)," +

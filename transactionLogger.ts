@@ -18,15 +18,29 @@ var connectionWs = new web3.Connection(
         if (logs.logs.join(' ').includes('NFT sold')){
             const token: any = {};
             const collection: any = {};
+            const block: any = {};
+            const transaction: any = {};
             await connectionHttp.getTransaction(logs.signature).then(async info => {
-                //console.log(info);
+                console.log(info);
+                console.log("postTokenbalance ",info?.meta?.postTokenBalances);
+                console.log("transMessage ",info?.transaction.message);
+                console.log("transInstraction ",info?.transaction.message.instructions);
                 if (info && info.meta) {
                     token.token_id = info.meta.postTokenBalances ? info.meta.postTokenBalances[0].mint : null;
 
                     const preBalances = info.meta.preBalances;
                     const postBalances = info.meta.postBalances;
                     token.value = Math.max(...preBalances.map((item, index) => item - postBalances[index]))/1000000000;
-            
+                    
+                    var slotNumber = info?.slot
+                    if (slotNumber != null){
+                        connectionHttp.getBlock(slotNumber).then(async result => { 
+                            block.hash = result?.blockhash;
+                            block.blockTime = result?.blockTime;
+                            console.log("block time:", result?.blockTime, "; block hash:", result?.blockhash)
+                        })}
+
+
                     const metadata = await getMetadata(token.token_id!)
                     token.name = metadata.data.name;
                     token.uri = metadata.data.uri;
@@ -47,6 +61,8 @@ var connectionWs = new web3.Connection(
             }).catch(e => console.log(e));
             console.log(token);
             console.log(collection);
+            console.log(block);
+            
         }
     })
 })();
