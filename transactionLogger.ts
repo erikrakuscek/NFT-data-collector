@@ -12,7 +12,7 @@ var connectionWs = new web3.Connection(
     "confirmed"
 );
 
-// To generate SQLite database
+// Generate tables in postgresql if they don't exist
 createDatabase();
 
 (async () => {
@@ -79,12 +79,12 @@ createDatabase();
         
                     let collection_id = await select(`SELECT id FROM Collection WHERE name = '${collection.name}' AND family = '${collection.family}' AND external_url = '${collection.external_url}';`);
                     if (!(collection_id[0] && collection_id[0].id)) {
-                        collection_id = await insert(`INSERT INTO Collection (name, family, external_url) VALUES ('${collection.name}','${collection.family}','${collection.external_url}') RETURNING id;`);
+                        collection_id = await insert(`INSERT INTO Collection (name, family, external_url) VALUES ('${collection.name ? collection.name : ''}','${collection.family ? collection.family : ''}','${collection.external_url ? collection.external_url : ''}') RETURNING id;`);
                     } else {
                         collection_id = collection_id[0].id;
                     }
                     
-                    const token_id = await insert(`INSERT INTO Token (collection_id, address, uri, asset_metadata, image_url, name, symbol, description, traits) VALUES (${collection_id},'${token.address}','${token.uri}','${token.asset_metadata}','${token.image_url}','${token.name}','${token.symbol}','${token.description}','${token.traits}') ON CONFLICT (address) DO UPDATE SET name = Token.name RETURNING id;`);
+                    const token_id = await insert(`INSERT INTO Token (collection_id, address, uri, asset_metadata, image_url, name, symbol, description, traits) VALUES (${collection_id},'${token.address}','${token.uri}','${token.asset_metadata}','${token.image_url}','${token.name}','${token.symbol ? token.symbol : ''}','${token.description ? token.description : ''}','${token.traits}') ON CONFLICT (address) DO UPDATE SET name = Token.name RETURNING id;`);
         
                     const transaction_id = await insert(`INSERT INTO Transaction (signature, block_id, from_wallet_id, to_wallet_id, recent_blockHash, fee, value, vol) VALUES ('${transaction.signature}',${block_id},${from_wallet_id},${to_wallet_id},'${transaction.recent_blockhash}',${transaction.fee},${transaction.value},${transaction.vol}) RETURNING id;`);
         
