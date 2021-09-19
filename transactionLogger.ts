@@ -1,5 +1,5 @@
 import * as web3 from "@solana/web3.js";
-import { createDatabase, insert } from "./utils/database";
+import { createDatabase, insert } from "./utils/postgresql";
 import { getMetadata, getMetadataFromUrl } from "./utils/metadata";
 
 // Connect to cluster
@@ -70,8 +70,9 @@ var connectionWs = new web3.Connection(
                     wallet.to_wallet_address = info.transaction.message.accountKeys[idxBuyer].toString();
                 }
             }).catch(e => console.log(e));
-            insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.from_wallet_address}');`);
-            insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.to_wallet_address}');`);
+            const wallet_from_id = await insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.from_wallet_address}') RETURNING id;`);
+            const wallet_to_id = await insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.to_wallet_address}') RETURNING id;`);
+            const block_id = await insert(`INSERT INTO Block (Hash) VALUES ('${block.hash}') RETURNING id;`);
             console.log(token);
             console.log(collection);
             console.log(block);
