@@ -1,5 +1,5 @@
 import * as web3 from "@solana/web3.js";
-import { createDatabase, insert, update } from "./utils/postgresql";
+import { createDatabase, insert, select, update } from "./utils/postgresql";
 import { getMetadata, getMetadataFromUrl } from "./utils/metadata";
 
 // Connect to cluster
@@ -13,7 +13,7 @@ var connectionWs = new web3.Connection(
 );
 
 // To generate SQLite database
-// createDatabase();
+createDatabase();
 
 (async () => {
     connectionWs.onLogs('all', async (logs, ctx) => {
@@ -73,28 +73,31 @@ var connectionWs = new web3.Connection(
                 }
             }).catch(e => console.log(e));
 
-            const from_wallet_id = await insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.from_wallet_address}') RETURNING id;`);
-            const to_wallet_id = await insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.to_wallet_address}') RETURNING id;`);
+            const from_wallet_id = await insert(`INSERT INTO Wallet (address) VALUES ('${wallet.from_wallet_address}') ON CONFLICT (address) DO UPDATE SET address = Wallet.address RETURNING id;`);
+            const to_wallet_id = await insert(`INSERT INTO Wallet (address) VALUES ('${wallet.to_wallet_address}') ON CONFLICT (address) DO UPDATE SET address = Wallet.address RETURNING id;`);
 
-            const block_id = await insert(`INSERT INTO Block (Hash) VALUES ('${block.hash}') RETURNING id;`);
+            const block_id = await insert(`INSERT INTO Block (hash, block_time) VALUES ('${block.hash}', ${block.blockTime}) RETURNING id;`);
 
-            const collection_id = await insert(`INSERT INTO Collection (block_number, name, family, external_url) VALUES (${block_id},'${collection.name}','${collection.family}','${collection.external_url}') RETURNING id;`);
-
-            const token_id = await insert(`INSERT INTO Token (collection_id, address, uri, asset_metadata, image_url, name, symbol, description, traits) VALUES (${collection_id},'${token.address}','${token.uri}','${token.asset_metadata}','${token.image_url}','${token.name}','${token.symbol}','${token.description}','${token.traits}') RETURNING id;`);
+            let collection_id = await select(`SELECT id FROM Collection WHERE name = '${collection.name}' AND family = '${collection.family}' AND external_url ='${collection.external_url}';`);
+            if(!collection_id){
+                collection_id = await insert(`INSERT INTO Collection (name, family, external_url) VALUES ('${collection.name}','${collection.family}','${collection.external_url}') RETURNING id;`);
+            }
+            
+            const token_id = await insert(`INSERT INTO Token (collection_id, address, uri, asset_metadata, image_url, name, symbol, description, traits) VALUES (${collection_id},'${token.address}','${token.uri}','${token.asset_metadata}','${token.image_url}','${token.name}','${token.symbol}','${token.description}','${token.traits}') ON CONFLICT (address) DO UPDATE SET name = Token.name RETURNING id;`);
 
             const transaction_id = await insert(`INSERT INTO Transaction (signature, block_id, from_wallet_id, to_wallet_id, recent_blockHash, fee, value, vol) VALUES ('${transaction.signature}',${block_id},${from_wallet_id},${to_wallet_id},'${transaction.recent_blockhash}',${transaction.fee},${transaction.value},${transaction.vol}) RETURNING id;`);
 
             const transfer_id = await insert(`INSERT INTO Transfer (block_id, log, transaction_id, token_id, from_wallet_id, to_wallet_id) VALUES (${block_id},'${transfer.log}',${transaction_id},${token_id},${from_wallet_id},${to_wallet_id}) RETURNING id;`);
-            await update(`UPDATE Token SET latest_transfer_id = ${transfer_id} WHERE id = ${token_id};`);
             
-            console.log(wallet);
-            console.log(block);
-            console.log(collection);
-            console.log(token);
-            console.log(transaction);
-            console.log(transfer);
+            await update(`UPDATE Token SET latest_transfer_id = ${transfer_id} WHERE id = ${token_id};`);
+     
+            //console.log(wallet);
+            //console.log(block);
+            //console.log(collection);
+            //console.log(token);
+            //console.log(transaction);
+            //console.log(transfer);
 
-            // TODO: solve the duplicate tokens, collections... in database
         }
     })
 })();

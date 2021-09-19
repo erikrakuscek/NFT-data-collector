@@ -16,21 +16,26 @@ export async function update(query: string) {
     await client.query(query);
 }
 
+export async function select(query: string){
+    const result = await client.query(query);
+    return result.rows[0].id;
+}
+
 export async function createDatabase() {
     await client.query("CREATE TABLE IF NOT EXISTS Wallet (" +
     "id SERIAL PRIMARY KEY," +
-    "address TEXT" +
+    "address TEXT UNIQUE" +
     ");");
 
     await client.query("CREATE TABLE IF NOT EXISTS Block (" +
         "id SERIAL PRIMARY KEY," +
         "hash TEXT," +
-        "timestamp TIMESTAMP DEFAULT NOW()" +
+        "timestamp TIMESTAMP DEFAULT NOW()," +
+        "block_time INT" +
         ");");
 
     await client.query("CREATE TABLE IF NOT EXISTS Collection (" +
         "id SERIAL PRIMARY KEY," +
-        "block_number INT," +
         "name TEXT," +
         "symbol TEXT," +
         "family TEXT," +
@@ -45,7 +50,7 @@ export async function createDatabase() {
     await client.query("CREATE TABLE IF NOT EXISTS Token (" +
         "id SERIAL PRIMARY KEY," +
         "collection_id INT," +
-        "address TEXT," +
+        "address TEXT UNIQUE," +
         "uri TEXT," +
         "asset_metadata TEXT," +
         "image_url TEXT," +
