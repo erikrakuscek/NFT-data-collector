@@ -30,7 +30,7 @@ createDatabase();
             await connectionHttp.getTransaction(logs.signature).then(async info => {
                 if (info && info.meta) {
                     token.address = info.meta.postTokenBalances ? info.meta.postTokenBalances[0].mint : null;
-                    transfer.log = JSON.stringify(logs.logs).replace('\'', '');
+                    transfer.log = JSON.stringify(logs.logs).replace('\'', '`');
 
                     const preBalances = info.meta.preBalances;
                     const postBalances = info.meta.postBalances;
@@ -44,8 +44,8 @@ createDatabase();
                     var slotNumber = info?.slot;
                     if (slotNumber) {
                         const result = await connectionHttp.getBlock(slotNumber);
-                        block.hash = result?.blockhash;
-                        block.blockTime = result?.blockTime;
+                        block.hash = result ? result.blockhash : '';
+                        block.blockTime = result ? result.blockTime : -1;
                     }
 
                     const metadata = await getMetadata(token.address!)
@@ -54,9 +54,9 @@ createDatabase();
                     token.symbol = metadata.data.symbol;
 
                     const metadataJson = await getMetadataFromUrl(token.uri);
-                    token.asset_metadata = JSON.stringify(metadataJson);
+                    token.asset_metadata = JSON.stringify(metadataJson).replace('\'', '`');
                     token.image_url = metadataJson.image;
-                    token.traits = JSON.stringify(metadataJson.attributes);
+                    token.traits = JSON.stringify(metadataJson.attributes).replace('\'', '`');
                     token.description = metadataJson.description;
 
                     collection.name = metadataJson.collection;
@@ -78,10 +78,10 @@ createDatabase();
 
             const block_id = await insert(`INSERT INTO Block (hash, block_time) VALUES ('${block.hash}', ${block.blockTime}) RETURNING id;`);
 
-            let collection_id = await select(`SELECT id FROM Collection WHERE name = '${collection.name}' AND family = '${collection.family}' AND external_url ='${collection.external_url}';`);
-            if(!(collection_id[0] && collection_id[0].id)){
+            let collection_id = await select(`SELECT id FROM Collection WHERE name = '${collection.name}' AND family = '${collection.family}' AND external_url = '${collection.external_url}';`);
+            if (!(collection_id[0] && collection_id[0].id)) {
                 collection_id = await insert(`INSERT INTO Collection (name, family, external_url) VALUES ('${collection.name}','${collection.family}','${collection.external_url}') RETURNING id;`);
-            }else{
+            } else {
                 collection_id = collection_id[0].id;
             }
             
@@ -99,7 +99,6 @@ createDatabase();
             //console.log(token);
             //console.log(transaction);
             //console.log(transfer);
-
         }
     })
 })();

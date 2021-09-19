@@ -8,24 +8,41 @@ const client = new Client({
 client.connect();
 
 export async function insert(query: string) {
-    const result = await client.query(query);
-    return result.rows[0].id;
+    try {
+        const result = await client.query(query);
+        return result.rows[0].id;
+    } catch (err) {
+        console.error(`Error in insert(), query: ${query}`);
+        console.error(err);
+    }
+    return -1;
 }
 
 export async function update(query: string) {
-    await client.query(query);
+    try {
+        await client.query(query);
+    } catch (err) {
+        console.error(`Error in update(), query: ${query}`);
+        console.error(err);
+    }
 }
 
 export async function select(query: string){
-    const result = await client.query(query);
-    return result.rows;
+    try {
+        const result = await client.query(query);
+        return result.rows;
+    } catch (err) {
+        console.error(`Error in select(), query: ${query}`);
+        console.error(err);
+    }
+    return [];
 }
 
 export async function createDatabase() {
     await client.query("CREATE TABLE IF NOT EXISTS Wallet (" +
-    "id SERIAL PRIMARY KEY," +
-    "address TEXT UNIQUE" +
-    ");");
+        "id SERIAL PRIMARY KEY," +
+        "address TEXT UNIQUE" +
+        ");");
 
     await client.query("CREATE TABLE IF NOT EXISTS Block (" +
         "id SERIAL PRIMARY KEY," +
