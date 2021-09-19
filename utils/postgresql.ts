@@ -18,7 +18,7 @@ export async function update(query: string) {
 
 export async function select(query: string){
     const result = await client.query(query);
-    return result.rows[0].id;
+    return result.rows;
 }
 
 export async function createDatabase() {
