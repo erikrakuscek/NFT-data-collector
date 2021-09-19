@@ -12,36 +12,37 @@ export async function insert(query: string) {
     return result.rows[0].id;
 }
 
+export async function update(query: string) {
+    await client.query(query);
+}
+
 export async function createDatabase() {
-    await client.query("CREATE TABLE IF NOT EXISTS public.Block (" +
+    await client.query("CREATE TABLE IF NOT EXISTS Wallet (" +
+    "id SERIAL PRIMARY KEY," +
+    "address TEXT" +
+    ");");
+
+    await client.query("CREATE TABLE IF NOT EXISTS Block (" +
         "id SERIAL PRIMARY KEY," +
         "hash TEXT," +
         "timestamp TIMESTAMP DEFAULT NOW()" +
         ");");
 
-    await client.query("CREATE TABLE IF NOT EXISTS public.Wallet (" +
+    await client.query("CREATE TABLE IF NOT EXISTS Collection (" +
         "id SERIAL PRIMARY KEY," +
-        "address TEXT" +
-        ");");
-
-    await client.query("CREATE TABLE IF NOT EXISTS public.Collection (" +
-        "id SERIAL PRIMARY KEY," +
-        "address TEXT," +
         "block_number INT," +
-        "transaction_hash TEXT," +
         "name TEXT," +
         "symbol TEXT," +
-        "site TEXT," +
+        "family TEXT," +
+        "external_url TEXT," +
         "image_url TEXT," +
-        "description TEXT," +
-        "external_link TEXT," +
         "facebook_url TEXT," +
         "twitter_url TEXT," +
         "opensea_link TEXT," +
         "discord_link TEXT" +
         ");");
 
-    await client.query("CREATE TABLE IF NOT EXISTS public.Token (" +
+    await client.query("CREATE TABLE IF NOT EXISTS Token (" +
         "id SERIAL PRIMARY KEY," +
         "collection_id INT," +
         "address TEXT," +
@@ -49,31 +50,31 @@ export async function createDatabase() {
         "asset_metadata TEXT," +
         "image_url TEXT," +
         "name TEXT," +
-        "external_link TEXT," +
+        "symbol TEXT," +
+        "description TEXT," +
         "traits TEXT," +
         "latest_transfer_id INT" +
         ");");
 
-    await client.query("CREATE TABLE IF NOT EXISTS public.Transaction (" +
+    await client.query("CREATE TABLE IF NOT EXISTS Transaction (" +
         "id SERIAL PRIMARY KEY," +
-        "hash TEXT," +
-        "block_number INT," +
-        "transaction_index TEXT," +
-        "from_wallet_id TEXT," +
-        "to_wallet_id TEXT," +
-        "recentBlockHash TEXT," +
+        "signature TEXT," +
+        "block_id INT," +
+        "from_wallet_id INT," +
+        "to_wallet_id INT," +
+        "recent_blockhash TEXT," +
         "fee INT," +
         "value REAL," +
         "vol INT" +
         ");");
 
-    await client.query("CREATE TABLE IF NOT EXISTS public.Transfer (" +
+    await client.query("CREATE TABLE IF NOT EXISTS Transfer (" +
         "id SERIAL PRIMARY KEY," +
-        "block_number INT," +
-        "log_index TEXT," +
+        "block_id INT," +
+        "log TEXT," +
         "transaction_id INT," +
         "token_id INT," +
-        "from_wallet_id TEXT," +
-        "to_wallet_id TEXT" +
+        "from_wallet_id INT," +
+        "to_wallet_id INT" +
         ");");
 }

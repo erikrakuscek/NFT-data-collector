@@ -1,5 +1,5 @@
 import * as web3 from "@solana/web3.js";
-import { createDatabase, insert } from "./utils/postgresql";
+import { createDatabase, insert, update } from "./utils/postgresql";
 import { getMetadata, getMetadataFromUrl } from "./utils/metadata";
 
 // Connect to cluster
@@ -26,9 +26,11 @@ var connectionWs = new web3.Connection(
             const block: any = {};
             const transaction: any = {};
             const wallet: any = {};
+            const transfer: any = {};
             await connectionHttp.getTransaction(logs.signature).then(async info => {
                 if (info && info.meta) {
                     token.address = info.meta.postTokenBalances ? info.meta.postTokenBalances[0].mint : null;
+                    transfer.log = JSON.stringify(logs.logs).replace('\'', '');
 
                     const preBalances = info.meta.preBalances;
                     const postBalances = info.meta.postBalances;
@@ -49,19 +51,19 @@ var connectionWs = new web3.Connection(
                     const metadata = await getMetadata(token.address!)
                     token.name = metadata.data.name;
                     token.uri = metadata.data.uri;
-                    //token.symbol = metadata.data.symbol;
+                    token.symbol = metadata.data.symbol;
 
                     const metadataJson = await getMetadataFromUrl(token.uri);
                     token.asset_metadata = JSON.stringify(metadataJson);
                     token.image_url = metadataJson.image;
                     token.traits = JSON.stringify(metadataJson.attributes);
-                    //token.description = metadataJson.description;
+                    token.description = metadataJson.description;
 
                     collection.name = metadataJson.collection;
                     if (metadataJson.collection?.name) {
                         collection.name = metadataJson.collection.name;
                     }
-                    collection.description = metadataJson.collection?.family;
+                    collection.family = metadataJson.collection?.family;
                     collection.external_url = metadataJson.external_url;
 
                     const idxSeller = subArray.indexOf(Math.max(...subArray));
@@ -70,14 +72,29 @@ var connectionWs = new web3.Connection(
                     wallet.to_wallet_address = info.transaction.message.accountKeys[idxBuyer].toString();
                 }
             }).catch(e => console.log(e));
-            const wallet_from_id = await insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.from_wallet_address}') RETURNING id;`);
-            const wallet_to_id = await insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.to_wallet_address}') RETURNING id;`);
+
+            const from_wallet_id = await insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.from_wallet_address}') RETURNING id;`);
+            const to_wallet_id = await insert(`INSERT INTO Wallet (Address) VALUES ('${wallet.to_wallet_address}') RETURNING id;`);
+
             const block_id = await insert(`INSERT INTO Block (Hash) VALUES ('${block.hash}') RETURNING id;`);
-            console.log(token);
-            console.log(collection);
-            console.log(block);
-            console.log(transaction);
+
+            const collection_id = await insert(`INSERT INTO Collection (block_number, name, family, external_url) VALUES (${block_id},'${collection.name}','${collection.family}','${collection.external_url}') RETURNING id;`);
+
+            const token_id = await insert(`INSERT INTO Token (collection_id, address, uri, asset_metadata, image_url, name, symbol, description, traits) VALUES (${collection_id},'${token.address}','${token.uri}','${token.asset_metadata}','${token.image_url}','${token.name}','${token.symbol}','${token.description}','${token.traits}') RETURNING id;`);
+
+            const transaction_id = await insert(`INSERT INTO Transaction (signature, block_id, from_wallet_id, to_wallet_id, recent_blockHash, fee, value, vol) VALUES ('${transaction.signature}',${block_id},${from_wallet_id},${to_wallet_id},'${transaction.recent_blockhash}',${transaction.fee},${transaction.value},${transaction.vol}) RETURNING id;`);
+
+            const transfer_id = await insert(`INSERT INTO Transfer (block_id, log, transaction_id, token_id, from_wallet_id, to_wallet_id) VALUES (${block_id},'${transfer.log}',${transaction_id},${token_id},${from_wallet_id},${to_wallet_id}) RETURNING id;`);
+            await update(`UPDATE Token SET latest_transfer_id = ${transfer_id} WHERE id = ${token_id};`);
+            
             console.log(wallet);
+            console.log(block);
+            console.log(collection);
+            console.log(token);
+            console.log(transaction);
+            console.log(transfer);
+
+            // TODO: solve the duplicate tokens, collections... in database
         }
     })
 })();
