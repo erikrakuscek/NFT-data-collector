@@ -30,7 +30,7 @@ createDatabase();
             await connectionHttp.getTransaction(logs.signature).then(async info => {
                 if (info && info.meta) {
                     token.address = info.meta.postTokenBalances ? info.meta.postTokenBalances[0].mint : null;
-                    transfer.log = JSON.stringify(logs.logs).replace('\'', '`');
+                    transfer.log = JSON.stringify(logs.logs).replace(/'/g, '`');
 
                     const preBalances = info.meta.preBalances;
                     const postBalances = info.meta.postBalances;
@@ -54,9 +54,9 @@ createDatabase();
                     token.symbol = metadata.data.symbol;
 
                     const metadataJson = await getMetadataFromUrl(token.uri);
-                    token.asset_metadata = JSON.stringify(metadataJson).replace('\'', '`');
+                    token.asset_metadata = JSON.stringify(metadataJson).replace(/'/g, '`');
                     token.image_url = metadataJson.image;
-                    token.traits = JSON.stringify(metadataJson.attributes).replace('\'', '`');
+                    token.traits = JSON.stringify(metadataJson.attributes).replace(/'/g, '`');
                     token.description = metadataJson.description;
 
                     collection.name = metadataJson.collection;
