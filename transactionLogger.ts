@@ -31,7 +31,7 @@ createDatabase();
                     const transfer: any = {};
     
                     token.address = info.meta.postTokenBalances ? info.meta.postTokenBalances[0].mint : null;
-                    transfer.log = JSON.stringify(logs.logs).replace(/'/g, '`');
+                    transfer.log = replaceApostrophe(JSON.stringify(logs.logs));
 
                     const preBalances = info.meta.preBalances;
                     const postBalances = info.meta.postBalances;
@@ -50,23 +50,24 @@ createDatabase();
                     }
 
                     const metadata = await getMetadata(token.address!)
-                    token.name = metadata.data.name;
-                    token.uri = metadata.data.uri;
-                    token.symbol = metadata.data.symbol;
+                    token.name = replaceApostrophe(metadata.data.name);
+                    token.uri = replaceApostrophe(metadata.data.uri);
+                    token.symbol = replaceApostrophe(metadata.data.symbol);
 
                     const metadataJson = await getMetadataFromUrl(token.uri);
-                    token.asset_metadata = JSON.stringify(metadataJson).replace(/'/g, '`');
-                    token.image_url = metadataJson.image;
-                    token.traits = JSON.stringify(metadataJson.attributes) ? JSON.stringify(metadataJson.attributes).replace(/'/g, '`') : '';
-                    token.description = metadataJson.description;
+                    token.asset_metadata = replaceApostrophe(JSON.stringify(metadataJson));
+                    token.image_url = replaceApostrophe(metadataJson.image);
+                    token.traits = replaceApostrophe(JSON.stringify(metadataJson.attributes));
+                    token.description = replaceApostrophe(metadataJson.description);
 
-                    collection.name = metadataJson.collection;
                     if (metadataJson.collection?.name) {
-                        collection.name = metadataJson.collection.name;
+                        collection.name = replaceApostrophe(metadataJson.collection.name);
+                    } else {
+                        collection.name = replaceApostrophe(metadataJson.collection);
                     }
-                    collection.family = metadataJson.collection?.family;
+                    collection.family = replaceApostrophe(metadataJson.collection?.family);
                     if (metadataJson.external_url) {
-                        collection.external_url = (new URL(metadataJson.external_url)).origin;    
+                        collection.external_url = replaceApostrophe((new URL(metadataJson.external_url)).origin);    
                     } else {
                         collection.external_url = '';
                     }
@@ -83,12 +84,12 @@ createDatabase();
         
                     let collection_id = await select(`SELECT id FROM Collection WHERE name = '${collection.name}' AND family = '${collection.family}' AND external_url = '${collection.external_url}';`);
                     if (!(collection_id[0] && collection_id[0].id)) {
-                        collection_id = await insert(`INSERT INTO Collection (name, family, external_url) VALUES ('${collection.name ? collection.name : ''}','${collection.family ? collection.family : ''}','${collection.external_url ? collection.external_url : ''}') RETURNING id;`);
+                        collection_id = await insert(`INSERT INTO Collection (name, family, external_url) VALUES ('${collection.name}','${collection.family}','${collection.external_url}') RETURNING id;`);
                     } else {
                         collection_id = collection_id[0].id;
                     }
                     
-                    const token_id = await insert(`INSERT INTO Token (collection_id, address, uri, asset_metadata, image_url, name, symbol, description, traits) VALUES (${collection_id},'${token.address}','${token.uri}','${token.asset_metadata}','${token.image_url}','${token.name}','${token.symbol ? token.symbol : ''}','${token.description ? token.description : ''}','${token.traits}') ON CONFLICT (address) DO UPDATE SET name = Token.name RETURNING id;`);
+                    const token_id = await insert(`INSERT INTO Token (collection_id, address, uri, asset_metadata, image_url, name, symbol, description, traits) VALUES (${collection_id},'${token.address}','${token.uri}','${token.asset_metadata}','${token.image_url}','${token.name}','${token.symbol}','${token.description}','${token.traits}') ON CONFLICT (address) DO UPDATE SET name = Token.name RETURNING id;`);
         
                     const transaction_id = await insert(`INSERT INTO Transaction (signature, block_id, from_wallet_id, to_wallet_id, recent_blockHash, fee, value, vol) VALUES ('${transaction.signature}',${block_id},${from_wallet_id},${to_wallet_id},'${transaction.recent_blockhash}',${transaction.fee},${transaction.value},${transaction.vol}) RETURNING id;`);
         
@@ -111,3 +112,7 @@ createDatabase();
         }
     })
 })();
+
+function replaceApostrophe(str: string) {
+    return str ? str.replace(/'/g, '\'\'') : '';
+}
