@@ -65,7 +65,11 @@ createDatabase();
                         collection.name = metadataJson.collection.name;
                     }
                     collection.family = metadataJson.collection?.family;
-                    collection.external_url = metadataJson.external_url;
+                    if (metadataJson.external_url) {
+                        collection.external_url = (new URL(metadataJson.external_url)).origin;    
+                    } else {
+                        collection.external_url = '';
+                    }
 
                     const idxSeller = subArray.indexOf(Math.max(...subArray));
                     const idxBuyer = subArray.indexOf(Math.min(...subArray));
