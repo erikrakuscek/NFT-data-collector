@@ -57,7 +57,7 @@ createDatabase();
                     const metadataJson = await getMetadataFromUrl(token.uri);
                     token.asset_metadata = JSON.stringify(metadataJson).replace(/'/g, '`');
                     token.image_url = metadataJson.image;
-                    token.traits = JSON.stringify(metadataJson.attributes).replace(/'/g, '`');
+                    token.traits = JSON.stringify(metadataJson.attributes) ? JSON.stringify(metadataJson.attributes).replace(/'/g, '`') : '';
                     token.description = metadataJson.description;
 
                     collection.name = metadataJson.collection;
