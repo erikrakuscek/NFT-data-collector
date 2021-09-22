@@ -1,9 +1,17 @@
 import { Client } from 'pg';
-const client = new Client({
+/*const client = new Client({
     user: 'postgres',
     host: 'localhost',
     password: 'wuboteam',
     port: 5432
+});*/
+const client = new Client({
+    user: 'fdlxezlhmvxjxf',
+    host: 'ec2-34-197-105-186.compute-1.amazonaws.com',
+    password: 'a8510bc7ca9300ed76e4a6f4c08a9edea48e53adac37112505f1688beb1b18ee',
+    database: 'd844nlge4b84m2',
+    port: 5432,
+    ssl: { rejectUnauthorized: false }
 });
 client.connect();
 
