@@ -40,7 +40,7 @@ createDatabase();
                     transaction.signature = logs.signature;
                     transaction.recent_blockhash = info.transaction.message.recentBlockhash;
                     transaction.fee = info.meta.fee;
-                    transaction.vol = 1;
+                    transaction.vol = info.meta.postTokenBalances ? info.meta.postTokenBalances[0].uiTokenAmount.uiAmount : 0;
                     
                     var slotNumber = info?.slot;
                     if (slotNumber) {
