@@ -17,18 +17,21 @@ var connectionWs = new Connection(
 let processing: boolean = false;
 let queue: any[] = [];
 interval(100).subscribe(async () => {
-    console.log("queue elements: ", queue.length, "  address: ", queue[0] ? queue[0].tokenAddress : '');
+    const element = queue.shift();
+    const tokenAddress = element ? element.tokenAddress : '';
+    const slot = element ? element.slot : 0;
+    console.log("queue elements: ", queue.length, "  address: ", tokenAddress ? tokenAddress : '');
     if (queue.length === 0 || processing) {
         return;
     }
     processing = true;
 
+
     // Get signatures of transactions regarding a token
-    const signatures = await connectionHttp.getConfirmedSignaturesForAddress2(new PublicKey(queue[0].tokenAddress));
+    const signatures = await connectionHttp.getConfirmedSignaturesForAddress2(new PublicKey(tokenAddress));
 
     // Filter out only transactions that happened less than 50 slot ago
-    if (signatures.length > 0 && queue[0].slot - signatures[0].slot > 50) {
-        queue.shift();
+    if (signatures.length > 0 && slot - signatures[0].slot > 50) {
         processing = false;
         return;
     }
@@ -40,7 +43,7 @@ interval(100).subscribe(async () => {
     const wallet: any = {};
     const transfer: any = {};
 
-    token.address = queue[0].tokenAddress;
+    token.address = tokenAddress;
     transaction.signature = signatures[0].signature;
     const transactionData = await connectionHttp.getTransaction(transaction.signature);
     transaction.recent_blockhash = transactionData?.transaction.message.recentBlockhash;
@@ -78,7 +81,6 @@ interval(100).subscribe(async () => {
 
     // Transaction is not a token transfer so no need to process further
     if (!isTokenTransfer) {
-        queue.shift();
         processing = false;
         return;
     }
@@ -114,7 +116,6 @@ interval(100).subscribe(async () => {
     }
 
     console.log("token transfer finished", token.address);
-    queue.shift();
     processing = false;
 
     /*console.log(wallet);
