@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Context, KeyedAccountInfo } from "@solana/web3.js";
+import { Connection, PublicKey, Context, KeyedAccountInfo, TransactionResponse } from "@solana/web3.js";
 import { getMetadata, getMetadataFromUrl } from "./utils/metadata";
 import { TOKEN_PROGRAM_ID, SYSTEM } from "./utils/ids";
 import * as bs58 from "bs58";
@@ -14,6 +14,101 @@ var connectionWs = new Connection(
 );
 
 (async () => {
+  
+    const trans = await connectionHttp.getTransaction("4u5C5p4yD6Z257wjFRbgvArB8bQayWCKbMgYaZZAhvwAsjAzjJPv8erdwAsZN2MPJPcVxXDZsYHv94SYH17L3fwo");
+    const instructions = trans?.meta?.innerInstructions;
+    //console.log(instructions)
+
+    //Find Token Transfer
+    const accounts = trans?.transaction.message.accountKeys;
+
+    const inst_array = instructions? instructions.map(i => i.instructions) : [];
+    const inst = [];
+    for(const e of inst_array){
+        inst.push(...e)
+    }
+    console.log(inst)
+
+    const tokenTransferInstruction = inst.filter(i => { 
+        let result = false;
+        if(accounts){
+            result = accounts[i.programIdIndex].equals(TOKEN_PROGRAM_ID) && bs58.decode(i.data).toString('hex').substring(0,2) === '03'            
+        }
+        return result
+    })[0];
+    console.log(tokenTransferInstruction)
+    const sourceAcount = accounts? accounts[tokenTransferInstruction.accounts[0]].toString() : "";
+    const destinationAccount = accounts? accounts[tokenTransferInstruction.accounts[1]].toString() : "";
+
+    console.log(sourceAcount)
+    console.log(destinationAccount)
+
+    //find buyer address, search for initialize account instrutions where initAccount equals destinationAccounts.
+
+    const initializeAccountInstruction = inst.filter(i => { 
+        let result = false;
+        if(accounts){
+            result = accounts[i.programIdIndex].equals(TOKEN_PROGRAM_ID) && bs58.decode(i.data).toString('hex').substring(0,2) === '01'            
+        }
+        return result
+    })[0];
+
+    console.log(initializeAccountInstruction)
+    const buyerAcount = accounts? accounts[initializeAccountInstruction.accounts[2]].toString() : "";
+
+    console.log(buyerAcount)
+
+  
+    console.log("----------------------------------------------------")
+    const sellerAcount = getSeller(sourceAcount)
+
+    
+
+})();
+function concateInstructions(trans : any){
+
+    const outerInstructions = trans?.transaction.message.instructions;
+    const instructions = trans?.meta?.innerInstructions;
+
+    const inst_array = instructions? instructions.map((i:any) => i.instructions) : [];
+    const inst = [];
+    for(const e of inst_array){
+        inst.push(...e)
+    }
+    //console.log(inst)
+    return inst.concat(outerInstructions)
+}
+//find seller address, get all transactions of sourceAccount, get info about the first transaction, get initialize account instrutions where initAccount equals sourceAccount.
+async function getSeller(address: string){
+    console.log(address)
+    const sigs = await connectionHttp.getConfirmedSignaturesForAddress2(new PublicKey(address));
+    const trans_sig = sigs[sigs.length-1].signature;
+
+    const trans = await connectionHttp.getTransaction(trans_sig);
+
+    const inst = concateInstructions(trans);
+
+    console.log(inst)
+
+
+    const accounts = trans?.transaction.message.accountKeys;
+
+    const initializeAccountInstruction = inst.filter(i => { 
+        let result = false;
+        if(accounts){
+            result = accounts[i.programIdIndex].equals(TOKEN_PROGRAM_ID) && bs58.decode(i.data).toString('hex').substring(0,2) === '01'            
+        }
+        return result
+    })[0];
+
+    console.log(initializeAccountInstruction)
+    const sellerAcount = accounts? accounts[initializeAccountInstruction.accounts[2]].toString() : "";
+
+    console.log(sellerAcount)
+    return sellerAcount
+}
+
+/*(async () => {
     connectionWs.onProgramAccountChange(TOKEN_PROGRAM_ID, async (keyedAccountInfo: KeyedAccountInfo, context: Context) => {
         const token: any = {};
         const collection: any = {};
@@ -103,7 +198,7 @@ var connectionWs = new Connection(
         bytes: 'jpXCZedGfVR',
         offset: 36
     }}]);
-})();
+})();*/
 
 /*(async () => {
     const token: any = {};
