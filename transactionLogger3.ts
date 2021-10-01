@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Context, KeyedAccountInfo } from "@solana/web3.js";
+import { Connection, PublicKey, Context, KeyedAccountInfo, CompiledInnerInstruction, CompiledInstruction, TransactionResponse } from "@solana/web3.js";
 import { getMetadata, getMetadataFromUrl } from "./utils/metadata";
 import { TOKEN_PROGRAM_ID, SYSTEM } from "./utils/ids";
 import {  interval } from 'rxjs';
@@ -16,17 +16,21 @@ var connectionWs = new Connection(
 
 let processing: boolean = false;
 let queue: any[] = [];
-interval(100).subscribe(async () => {
-    const element = queue.shift();
-    const tokenAddress = element ? element.tokenAddress : '';
-    const slot = element ? element.slot : 0;
-    console.log("queue elements: ", queue.length, "  address: ", tokenAddress ? tokenAddress : '');
-    if (queue.length === 0 || processing) {
+interval(200).subscribe(async () => {
+    if (processing) {
+        console.log("Still processing previous element...");
+        return;
+    } else if (queue.length === 0) {
+        console.log("queue elements: ", queue.length, "  address: ");
         return;
     }
     processing = true;
 
-
+    const element = queue.shift();
+    const tokenAddress = element ? element.tokenAddress : '';
+    const slot = element ? element.slot : 0;
+    console.log("queue elements: ", queue.length, "  address: ", tokenAddress);
+    
     // Get signatures of transactions regarding a token
     const signatures = await connectionHttp.getConfirmedSignaturesForAddress2(new PublicKey(tokenAddress));
 
@@ -45,47 +49,33 @@ interval(100).subscribe(async () => {
 
     token.address = tokenAddress;
     transaction.signature = signatures[0].signature;
-    const transactionData = await connectionHttp.getTransaction(transaction.signature);
-    transaction.recent_blockhash = transactionData?.transaction.message.recentBlockhash;
-    transaction.fee = transactionData?.meta?.fee;
-    transfer.log = replaceApostrophe(JSON.stringify(transactionData?.meta?.logMessages));
+    const trans = await connectionHttp.getTransaction(transaction.signature);
+    transaction.recent_blockhash = trans?.transaction.message.recentBlockhash;
+    transaction.fee = trans?.meta?.fee;
+    transfer.log = replaceApostrophe(JSON.stringify(trans?.meta?.logMessages));
 
-    const accounts = transactionData?.transaction.message.accountKeys;
-    const instructions = transactionData?.meta?.innerInstructions;
-    let lastSolTransfer = null;
-    let isTokenTransfer = false;
-    if (instructions && accounts) {
-        for (const innerInstructions of instructions) {
-            if (innerInstructions.instructions) {
-                for (const innerInstruction of innerInstructions.instructions) {
-                    if (accounts[innerInstruction.programIdIndex].equals(TOKEN_PROGRAM_ID)) {
-                        const data = bs58.decode(innerInstruction.data).toString('hex');
-                        if (data.substring(0,2) === "03" && lastSolTransfer) {
-                            const price = bs58.decode(lastSolTransfer.data).toString('hex');
-                            transaction.value = hexToDecimalLittleEndian(price.substring(8))/1000000000;
-                            transaction.vol = hexToDecimalLittleEndian(data.substring(2));
-
-                            wallet.from_wallet_address = accounts[innerInstruction.accounts[0]].toString();
-                            wallet.to_wallet_address = accounts[innerInstruction.accounts[1]].toString();
-        
-                            isTokenTransfer = true;
-                            //TODO: to_wallet_address is a token account, fix if we need to store the owner of this token account instead
-                        }
-                    } else if (accounts[innerInstruction.programIdIndex].equals(SYSTEM)) {
-                        lastSolTransfer = innerInstruction;
-                    }
-                }
-            }
-        }
-    }
+    // Find token transfer
+    const instructions = concatInstructions(trans!);
+    const accounts = trans?.transaction.message.accountKeys;
+    const tokenTransferInstruction = instructions.filter(i => accounts![i.programIdIndex].equals(TOKEN_PROGRAM_ID) && bs58.decode(i.data).toString('hex').substring(0,2) === '03');
 
     // Transaction is not a token transfer so no need to process further
-    if (!isTokenTransfer) {
+    if (tokenTransferInstruction.length === 0) {
         processing = false;
         return;
     }
 
-    var slotNumber = transactionData?.slot;
+    const d = await getBuyerSellerPriceVolume(instructions, accounts, tokenTransferInstruction[0]);
+    if (d === -1) {
+        processing = false;
+        return;
+    }
+    transaction.value = d.price;
+    transaction.vol = d.volume;
+    wallet.from_wallet_address = d.sellerAccount;
+    wallet.to_wallet_address = d.buyerAccount;
+
+    var slotNumber = trans?.slot;
     if (slotNumber) {
         const result = await connectionHttp.getBlock(slotNumber);
         block.hash = result?.blockhash;
@@ -136,6 +126,73 @@ interval(100).subscribe(async () => {
         offset: 36
     }}]);
 })();
+
+async function getBuyerSellerPriceVolume(instructions: CompiledInstruction[], accounts: PublicKey[] | undefined, tokenTransferInstruction: CompiledInstruction) {
+    const sourceAcount = accounts? accounts[tokenTransferInstruction.accounts[0]].toString() : "";
+    const destinationAccount = accounts? accounts[tokenTransferInstruction.accounts[1]].toString() : "";    
+
+    const buyerAccount = await getBuyer(instructions, accounts, destinationAccount);
+    if (buyerAccount === -1) return -1;
+    const sellerAccount = await getSeller(sourceAcount)
+    if (sellerAccount === -1) return -1;
+    const price = getPrice(instructions, accounts, buyerAccount, sellerAccount);
+    if (price === -1) return -1;
+    const volume = hexToDecimalLittleEndian(bs58.decode(tokenTransferInstruction.data).toString('hex').substring(2));
+
+    return { buyerAccount, sellerAccount, price, volume }
+}
+
+function concatInstructions(trans : TransactionResponse): CompiledInstruction[] {
+    const instructions = trans?.transaction.message.instructions;
+    const inner = trans?.meta?.innerInstructions;
+    const innerArr = inner ? inner.map((i: CompiledInnerInstruction) => i.instructions) : [];
+    for (const e of innerArr){
+        instructions.push(...e);
+    }
+    return instructions;
+}
+
+// Find buyer address, search for initialize account instrutions where initAccount equals destinationAccounts.
+async function getBuyer(instructions: CompiledInstruction[], accounts: PublicKey[] | undefined, destinationAccount: string){
+    const initializeAccountInstruction = instructions.filter((i: CompiledInstruction) =>
+        accounts![i.programIdIndex].equals(TOKEN_PROGRAM_ID) &&
+        bs58.decode(i.data).toString('hex').substring(0,2) === '01' &&
+        accounts![i.accounts[0]].toString() === destinationAccount
+    );
+    if (initializeAccountInstruction.length === 0) {
+        return -1;
+    }
+    return accounts? accounts[initializeAccountInstruction[0].accounts[2]].toString() : "";
+}
+
+// Find seller address, get all transactions of sourceAccount, get info about the first transaction, get initialize account instrutions where initAccount equals sourceAccount.
+async function getSeller(address: string){
+    const sigs = await connectionHttp.getConfirmedSignaturesForAddress2(new PublicKey(address));
+    const trans = await connectionHttp.getTransaction(sigs[sigs.length-1].signature);
+    const accounts = trans?.transaction.message.accountKeys;
+    const instructions = concatInstructions(trans!);
+
+    const initializeAccountInstruction = instructions.filter((i: CompiledInstruction) => accounts![i.programIdIndex].equals(TOKEN_PROGRAM_ID) && bs58.decode(i.data).toString('hex').substring(0,2) === '01');
+    if (initializeAccountInstruction.length === 0) {
+        return -1;
+    }
+    return accounts? accounts[initializeAccountInstruction[0].accounts[2]].toString() : "";
+}
+
+// Find SOL transfer instruction that involves given buyer and seller
+function getPrice(instructions: CompiledInstruction[], accounts: PublicKey[] | undefined, buyerAccount: string, sellerAccount: string) {
+    const solTransferInstruction = instructions.filter((i: CompiledInstruction) =>
+        accounts![i.programIdIndex].equals(SYSTEM) &&
+        bs58.decode(i.data).toString('hex').substring(0,2) === '02' &&
+        accounts![i.accounts[0]].toString() === buyerAccount &&
+        accounts![i.accounts[1]].toString() === sellerAccount
+    );
+    if (solTransferInstruction.length === 0) {
+        return -1;
+    }
+    const price = bs58.decode(solTransferInstruction[0].data).toString('hex');
+    return hexToDecimalLittleEndian(price.substring(8))/1000000000;
+}
 
 function replaceApostrophe(str: string) {
     return str ? str.replace(/'/g, '\'\'') : '';

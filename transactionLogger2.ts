@@ -9,19 +9,19 @@ var connectionHttp = new Connection(
 );
 
 (async () => {
-    const trans = await connectionHttp.getTransaction("4u5C5p4yD6Z257wjFRbgvArB8bQayWCKbMgYaZZAhvwAsjAzjJPv8erdwAsZN2MPJPcVxXDZsYHv94SYH17L3fwo");
+    const trans = await connectionHttp.getTransaction("22QCvK3q5UFJL8KR1bvUVXgYJidZfqPjGcYFjbvmsQWhVFnDktxk4WZ5ycz12yZA9fkYgoViMNC4afQearrYnBrv");
     const instructions = concatInstructions(trans!);
     const accounts = trans?.transaction.message.accountKeys;
-
     // Find token transfer
-    const tokenTransferInstruction = instructions.filter(i => accounts![i.programIdIndex].equals(TOKEN_PROGRAM_ID) && bs58.decode(i.data).toString('hex').substring(0,2) === '03')[0];
-    const sourceAcount = accounts? accounts[tokenTransferInstruction.accounts[0]].toString() : "";
-    const destinationAccount = accounts? accounts[tokenTransferInstruction.accounts[1]].toString() : "";
+    const tokenTransferInstruction = instructions.filter(i => accounts![i.programIdIndex].equals(TOKEN_PROGRAM_ID) && bs58.decode(i.data).toString('hex').substring(0,2) === '03');
 
+    const sourceAcount = accounts? accounts[tokenTransferInstruction[0].accounts[0]].toString() : "";
+    const destinationAccount = accounts? accounts[tokenTransferInstruction[0].accounts[1]].toString() : "";
+    
     const buyerAccount = await getBuyer(instructions, accounts, destinationAccount);
     const sellerAccount = await getSeller(sourceAcount)
     const price = getPrice(instructions, accounts, buyerAccount, sellerAccount);
-    const volume = hexToDecimalLittleEndian(bs58.decode(tokenTransferInstruction.data).toString('hex').substring(2));
+    const volume = hexToDecimalLittleEndian(bs58.decode(tokenTransferInstruction[0].data).toString('hex').substring(2));
 
     console.log(buyerAccount, sellerAccount, price, volume)
 })();
