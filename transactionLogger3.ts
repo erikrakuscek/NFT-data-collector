@@ -20,7 +20,7 @@ createDatabase();
 
 let processing: boolean = false;
 let queue: any[] = [];
-interval(200).subscribe(async () => {
+interval(100).subscribe(async () => {
     if (processing) {
         console.log("Still processing previous element...");
         return;
@@ -31,6 +31,10 @@ interval(200).subscribe(async () => {
     processing = true;
 
     const element = queue.pop();
+    if (!element) {
+        processing = false;
+        return;
+    }
     const tokenAddress = element ? element.tokenAddress : '';
     const slot = element ? element.slot : 0;
     console.log("queue elements: ", queue.length, "  address: ", tokenAddress);
@@ -81,9 +85,14 @@ interval(200).subscribe(async () => {
 
     var slotNumber = trans?.slot;
     if (slotNumber) {
-        const result = await connectionHttp.getBlock(slotNumber);
-        block.hash = result?.blockhash;
-        block.block_time = result?.blockTime;
+        try {
+            const result = await connectionHttp.getBlock(slotNumber);
+            block.hash = result?.blockhash;
+            block.block_time = result?.blockTime;    
+        } catch {
+            processing = false;
+            return;
+        }
     }
 
     const metadata = await getMetadata(token.address!)
@@ -223,7 +232,7 @@ function getPrice(instructions: CompiledInstruction[], accounts: PublicKey[] | u
 }
 
 function replaceApostrophe(str: string) {
-    return str ? str.replace(/'/g, '\'\'') : '';
+    return str! ? str.replace(/'/g, '\'\'') : '';
 }
 
 function hexToDecimalLittleEndian(endian: string) {
