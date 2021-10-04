@@ -108,3 +108,12 @@ export async function createDatabase() {
         "to_wallet_id INT" +
         ");");
 }
+
+export async function dropDatabase() {
+    await client.query("DELETE FROM Wallet;");
+    await client.query("DELETE FROM Block;");
+    await client.query("DELETE FROM Collection;");
+    await client.query("DELETE FROM Token;");
+    await client.query("DELETE FROM Transaction;");
+    await client.query("DELETE FROM Transfer;");
+}

@@ -2,6 +2,7 @@ import { Connection, PublicKey, Context, KeyedAccountInfo, CompiledInnerInstruct
 import { getMetadata, getMetadataFromUrl } from "./utils/metadata";
 import { TOKEN_PROGRAM_ID, SYSTEM } from "./utils/ids";
 import {  interval } from 'rxjs';
+import { createDatabase, insert, select, update, dropDatabase } from "./utils/postgresql";
 import * as bs58 from "bs58";
 
 // Connect to cluster
@@ -13,6 +14,9 @@ var connectionWs = new Connection(
     'ws://api.mainnet-beta.solana.com',
     "confirmed"
 );
+
+createDatabase();
+//dropDatabase();
 
 let processing: boolean = false;
 let queue: any[] = [];
@@ -26,7 +30,7 @@ interval(200).subscribe(async () => {
     }
     processing = true;
 
-    const element = queue.shift();
+    const element = queue.pop();
     const tokenAddress = element ? element.tokenAddress : '';
     const slot = element ? element.slot : 0;
     console.log("queue elements: ", queue.length, "  address: ", tokenAddress);
@@ -35,7 +39,7 @@ interval(200).subscribe(async () => {
     const signatures = await connectionHttp.getConfirmedSignaturesForAddress2(new PublicKey(tokenAddress));
 
     // Filter out only transactions that happened less than 50 slot ago
-    if (signatures.length > 0 && slot - signatures[0].slot > 50) {
+    if (signatures.length === 0 || signatures.length > 0 && slot - signatures[0].slot > 50) {
         processing = false;
         return;
     }
@@ -108,6 +112,8 @@ interval(200).subscribe(async () => {
     console.log("token transfer finished", token.address);
     processing = false;
 
+    addToDatabase(wallet, block, collection, token, transaction, transfer);
+
     /*console.log(wallet);
     console.log(block);
     console.log(collection);
@@ -126,6 +132,28 @@ interval(200).subscribe(async () => {
         offset: 36
     }}]);
 })();
+
+async function addToDatabase(wallet: any, block: any, collection: any, token: any, transaction: any, transfer: any) {
+    const from_wallet_id = await insert(`INSERT INTO Wallet (address) VALUES ('${wallet.from_wallet_address}') ON CONFLICT (address) DO UPDATE SET address = Wallet.address RETURNING id;`);
+    const to_wallet_id = await insert(`INSERT INTO Wallet (address) VALUES ('${wallet.to_wallet_address}') ON CONFLICT (address) DO UPDATE SET address = Wallet.address RETURNING id;`);
+
+    const block_id = await insert(`INSERT INTO Block (hash, block_time) VALUES ('${block.hash}', ${block.block_time}) RETURNING id;`);
+
+    let collection_id = await select(`SELECT id FROM Collection WHERE name = '${collection.name}' AND family = '${collection.family}' AND external_url = '${collection.external_url}';`);
+    if (!(collection_id[0] && collection_id[0].id)) {
+        collection_id = await insert(`INSERT INTO Collection (name, family, external_url) VALUES ('${collection.name}','${collection.family}','${collection.external_url}') RETURNING id;`);
+    } else {
+        collection_id = collection_id[0].id;
+    }
+    
+    const token_id = await insert(`INSERT INTO Token (collection_id, address, uri, asset_metadata, image_url, name, symbol, description, traits) VALUES (${collection_id},'${token.address}','${token.uri}','${token.asset_metadata}','${token.image_url}','${token.name}','${token.symbol}','${token.description}','${token.traits}') ON CONFLICT (address) DO UPDATE SET name = Token.name RETURNING id;`);
+
+    const transaction_id = await insert(`INSERT INTO Transaction (signature, block_id, from_wallet_id, to_wallet_id, recent_blockHash, fee, value, vol) VALUES ('${transaction.signature}',${block_id},${from_wallet_id},${to_wallet_id},'${transaction.recent_blockhash}',${transaction.fee},${transaction.value},${transaction.vol}) RETURNING id;`);
+
+    const transfer_id = await insert(`INSERT INTO Transfer (block_id, log, transaction_id, token_id, from_wallet_id, to_wallet_id) VALUES (${block_id},'${transfer.log}',${transaction_id},${token_id},${from_wallet_id},${to_wallet_id}) RETURNING id;`);
+    
+    await update(`UPDATE Token SET latest_transfer_id = ${transfer_id} WHERE id = ${token_id};`);
+}
 
 async function getBuyerSellerPriceVolume(instructions: CompiledInstruction[], accounts: PublicKey[] | undefined, tokenTransferInstruction: CompiledInstruction) {
     const sourceAcount = accounts? accounts[tokenTransferInstruction.accounts[0]].toString() : "";
